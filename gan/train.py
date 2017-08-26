@@ -66,7 +66,7 @@ if __name__ == "__main__":
       "How much weight to give to the regularization loss (the label loss has "
       "a weight of 1).")
 
-  flags.DEFINE_float("base_learning_rate", 0.001,
+  flags.DEFINE_float("base_learning_rate", 0.0002,
                      "Which learning rate to start with.")
 
   flags.DEFINE_float("learning_rate_decay", 0.95,
@@ -107,7 +107,7 @@ if __name__ == "__main__":
                     "generated images during training. Note that it requires "
                     "installing matplotlib.")
 
-  flags.DEFINE_integer("export_image_steps", 500,
+  flags.DEFINE_integer("export_image_steps", 50,
                        "The period, in number of steps, with which the "
                        "generated image is exported in png file")
 
@@ -299,7 +299,7 @@ def build_graph(reader,
   tower_generated_images = []
   tower_predictions_for_fake = []
   tower_predictions_for_real = []
-  tower_D_losses = [] 
+  tower_D_losses = []
   tower_G_losses = []
 
   for i in range(num_towers):
@@ -311,7 +311,7 @@ def build_graph(reader,
           generator_model.create_model(image_width * image_height)
           discriminator_model.create_model(image_width * image_height)
 
-          generated_result = generator_model.run_model(tower_noise_input[i])
+          generated_result = generator_model.run_model(tower_noise_input[i], reuse=True if i > 0 else None)
           generated_images = generated_result["output"]
 
           generated_images_shaped = tf.reshape(
@@ -319,8 +319,8 @@ def build_graph(reader,
           tf.summary.image('generated_images', generated_images_shaped, 10)
           tower_generated_images.append(generated_images)
 
-          result_from_fake = discriminator_model.run_model(generated_images)
-          result_from_real = discriminator_model.run_model(tower_inputs[i])
+          result_from_fake = discriminator_model.run_model(generated_images, reuse=True if i > 0 else None)
+          result_from_real = discriminator_model.run_model(tower_inputs[i], reuse=True)
           for variable in slim.get_model_variables():
             tf.summary.histogram(variable.op.name, variable)
 
@@ -345,7 +345,7 @@ def build_graph(reader,
           D_var = discriminator_model.get_variables()
           D_gradients = optimizer.compute_gradients(D_loss, var_list=D_var)
           tower_D_gradients.append(D_gradients)
- 
+
           G_var = generator_model.get_variables()
           G_gradients = optimizer.compute_gradients(G_loss, var_list=G_var)
           tower_G_gradients.append(G_gradients)
@@ -381,7 +381,7 @@ def build_graph(reader,
 class Trainer(object):
   """A Trainer to train a Tensorflow graph."""
 
-  def __init__(self, cluster, task, train_dir, generator_model, discriminator_model, 
+  def __init__(self, cluster, task, train_dir, generator_model, discriminator_model,
                reader, model_exporter, log_device_placement=True, max_steps=None,
                export_model_steps=1000, export_generated_images=False,
                export_image_steps=500, image_dir="out/"):
@@ -452,7 +452,7 @@ class Trainer(object):
         G_train_op = tf.get_collection("G_train_op")[0]
         noise_input = tf.get_collection("noise_input_placeholder")[0]
         init_op = tf.global_variables_initializer()
-    
+
     # NOTE: Set save_summaries_sec=0 here because Supervisor doesn't support
     # feeding placeholder on summary_op. Instead, it feeds summary_op manually
     # in below loop.
@@ -732,6 +732,6 @@ if __name__ == "__main__":
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 if not os.path.exists(FLAGS.image_dir):
-  os.makedirs(FLAGS.image_dir)""")      
+  os.makedirs(FLAGS.image_dir)""")
 
   app.run()

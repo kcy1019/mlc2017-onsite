@@ -150,7 +150,7 @@ def build_graph(reader,
     result_from_fake = discriminator_model.run_model(
         generated_images, is_training=False)
     result_from_real = discriminator_model.run_model(
-        model_input, is_training=False)
+        model_input, is_training=False, reuse=True)
 
     predictions_for_fake = result_from_fake["predictions"]
     predictions_for_real = result_from_real["predictions"]
